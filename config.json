@@ -1,0 +1,9 @@
+{
+  "LAMBDA_FUNCTION": "fileConvert",
+  "S3_BUCKET_NAME": "myfileaccess1",
+  "FILE_SIZE": 5242880,
+  "FILE_SIZE_STRING": "5 MB",
+  "QUEUE_URL": "https://sqs.us-east-2.amazonaws.com/545717050082/fileconverter-dev-jobs",
+  "FILE_SIZE_UNDER20MB": 20971520,
+  "FILE_SIZE_UNDER5GB": 5368709120
+}

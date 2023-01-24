@@ -1,0 +1,130 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: fileconverter
+# app and org for use with dashboard.serverless.com
+#app: your-app-name
+#org: your-org-name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: ${opt:region, 'us-east-2'}
+  environment:
+    STAGE: ${opt:stage, 'dev'}
+    bucketName: 'arn:aws:s3:::${file(config.json):S3_BUCKET_NAME}'
+
+# you can overwrite defaults here
+#  stage: dev
+#  region: us-east-1
+
+
+# you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        # Allow functions to list all buckets
+        - Effect: Allow
+          Action: 's3:ListBucket'
+          Resource: '*'
+        # Allow functions to read/write objects in a bucket
+        - Effect: Allow
+          Action:
+            - 's3:GetObject'
+            - 's3:PutObject'
+          Resource:
+            - "arn:aws:s3:::${file(config.json):S3_BUCKET_NAME}"
+            - "arn:aws:s3:::${file(config.json):S3_BUCKET_NAME}/*"
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource: "*" 
+        - Effect: Allow
+          Action:
+            - dynamodb:*
+          Resource: "*" 
+
+#plugins
+plugins:
+  - serverless-appsync-plugin
+  - serverless-lift
+custom:   
+   appSync:
+    name: appsync-file-convert
+    schema: schema.graphql
+    authenticationType: API_KEY
+    mappingTemplates:      
+      - type: Query
+        field: getFile
+        dataSource: ${file(config.json):LAMBDA_FUNCTION}
+        request: false
+        response: false      
+    dataSources:        
+      - type: AWS_LAMBDA
+        name: ${file(config.json):LAMBDA_FUNCTION}
+        config:
+          functionName: ${file(config.json):LAMBDA_FUNCTION}
+          iamRoleStatements:
+            - Effect: "Allow"
+              Action:
+                - lambda:InvokeFunction
+              Resource: "*" 
+
+constructs:
+    jobs:
+        type: queue
+        worker:
+            handler: src/worker.handler
+
+functions:
+  fileConvert:
+    handler: app.handler
+    events:
+     - httpApi:
+          path: /app
+          method: get
+    environment:
+        QUEUE_URL: ${construct:jobs.queueUrl}
+
+resources:
+  Resources:
+     Base64:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Base64 
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+     parquet:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: parquet
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+            
+
+
+ 
